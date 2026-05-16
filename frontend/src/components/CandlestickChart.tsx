@@ -11,6 +11,21 @@ interface OHLCRow {
   volume: number;
 }
 
+interface ForecastRow {
+  date?: string;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  volume?: number;
+}
+
+interface KLineForecast {
+  as_of_date: string;
+  pred_len: number;
+  forecast: ForecastRow[];
+}
+
 interface Particle {
   id: string;
   d: string;   // trade_date
@@ -46,6 +61,7 @@ interface ArticleSelection {
 
 interface Props {
   symbol: string;
+  forecast?: KLineForecast | null;
   lockedNewsId?: string | null;
   highlightedArticleIds?: string[] | null;
   highlightColor?: string | null;
@@ -95,7 +111,7 @@ interface PlacedParticle extends Particle {
   alpha: number;
 }
 
-export default function CandlestickChart({ symbol, lockedNewsId, highlightedArticleIds, highlightColor, onHover, onRangeSelect, onArticleSelect, onDayClick }: Props) {
+export default function CandlestickChart({ symbol, forecast, lockedNewsId, highlightedArticleIds, highlightColor, onHover, onRangeSelect, onArticleSelect, onDayClick }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +129,7 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
   const highlightColorRef = useRef<string | null>(null);
   const marginRef = useRef({ top: 16, right: 40, bottom: 24, left: 48 });
   const dataRef = useRef<{ rawData: OHLCRow[]; particles: Particle[] }>({ rawData: [], particles: [] });
+  const forecastRef = useRef<KLineForecast | null>(null);
   const domainRef = useRef<[number, number] | null>(null);
   const resizeFrameRef = useRef<number | null>(null);
   const chartActionsRef = useRef<{
@@ -134,6 +151,13 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
     highlightColorRef.current = highlightColor ?? null;
     drawParticles(hoveredParticleRef.current);
   }, [highlightedArticleIds, highlightColor]);
+
+  useEffect(() => {
+    forecastRef.current = forecast ?? null;
+    const { rawData, particles } = dataRef.current;
+    if (rawData.length === 0) return;
+    drawChart(rawData, particles, domainRef.current);
+  }, [forecast]);
 
   const drawParticles = useCallback((highlight: PlacedParticle | null = null) => {
     const canvas = canvasRef.current;
@@ -296,7 +320,29 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
       close: +d.close,
       volume: +d.volume,
       change: i > 0 ? ((+d.close - +rawData[i - 1].close) / +rawData[i - 1].close) * 100 : 0,
+      isForecast: false,
     }));
+
+    const forecastRows = (forecastRef.current?.forecast || [])
+      .filter((d) => d.date && d.open != null && d.high != null && d.low != null && d.close != null)
+      .map((d, i) => {
+        const close = Number(d.close);
+        const prevClose = i === 0 ? data[data.length - 1]?.close : Number(forecastRef.current!.forecast[i - 1]?.close);
+        return {
+          index: data.length + i,
+          date: new Date(d.date as string),
+          dateStr: d.date as string,
+          open: Number(d.open),
+          high: Math.max(Number(d.open), Number(d.high), Number(d.low), close),
+          low: Math.min(Number(d.open), Number(d.high), Number(d.low), close),
+          close,
+          volume: Number(d.volume || 0),
+          change: prevClose ? ((close - prevClose) / prevClose) * 100 : 0,
+          isForecast: true,
+        };
+      });
+    const chartRows = [...data, ...forecastRows];
+    const maxIndex = Math.max(0, chartRows.length - 1);
 
     // Build a lookup: dateStr → OHLC row
     const dateToOhlc = new Map<string, typeof data[0]>();
@@ -305,18 +351,18 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
     }
 
     const xBase = d3.scaleLinear()
-      .domain([0, Math.max(0, data.length - 1)])
+      .domain([0, maxIndex])
       .range([0, width]);
     let x = xBase.copy();
     if (initialDomain) {
       x.domain([
-        Math.max(0, Math.min(initialDomain[0], data.length - 1)),
-        Math.max(0, Math.min(initialDomain[1], data.length - 1)),
+        Math.max(0, Math.min(initialDomain[0], maxIndex)),
+        Math.max(0, Math.min(initialDomain[1], maxIndex)),
       ]);
     }
 
     const y = d3.scaleLinear()
-      .domain([d3.min(data, (d) => d.low)! * 0.92, d3.max(data, (d) => d.high)! * 1.03])
+      .domain([d3.min(chartRows, (d) => d.low)! * 0.92, d3.max(chartRows, (d) => d.high)! * 1.03])
       .range([height, 0]);
 
     // Grid lines
@@ -332,11 +378,11 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
     gridYG.selectAll('.domain').remove();
 
     // X Axis
-    const tickStep = Math.max(1, Math.ceil(data.length / 8));
-    const xTicks = data.filter((_, i) => i % tickStep === 0).map((d) => d.index);
+    const tickStep = Math.max(1, Math.ceil(chartRows.length / 8));
+    const xTicks = chartRows.filter((_, i) => i % tickStep === 0).map((d) => d.index);
     const xAxisG = g.append('g')
       .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((value) => data[Math.round(Number(value))]?.dateStr.slice(5) || ''))
+      .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((value) => chartRows[Math.round(Number(value))]?.dateStr.slice(5) || ''))
     xAxisG.selectAll('text').style('font-size', '12px').style('fill', '#555');
 
     // Y Axis
@@ -368,6 +414,56 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
       .attr('width', candleWidth)
       .attr('height', (d) => Math.max(1, Math.abs(y(d.open) - y(d.close))))
       .attr('fill', (d) => (d.close >= d.open ? A_UP : A_DOWN));
+
+    const forecastLayer = g.append('g').attr('class', 'forecast-layer');
+    if (forecastRows.length > 0) {
+      const splitX = x(data.length - 0.5);
+      forecastLayer.append('line')
+        .attr('class', 'forecast-separator')
+        .attr('x1', splitX)
+        .attr('x2', splitX)
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', '#fbbf24')
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '4,4')
+        .attr('opacity', 0.85);
+      forecastLayer.append('text')
+        .attr('class', 'forecast-label')
+        .attr('x', splitX + 8)
+        .attr('y', 14)
+        .attr('fill', '#fbbf24')
+        .attr('font-size', 12)
+        .attr('font-weight', 700)
+        .text(`Kronos T+${forecastRows.length}`);
+    }
+
+    const forecastCandles = forecastLayer.selectAll('.forecast-candle')
+      .data(forecastRows)
+      .enter()
+      .append('g')
+      .attr('class', 'forecast-candle');
+
+    forecastCandles.append('line')
+      .attr('x1', (d) => x(d.index))
+      .attr('x2', (d) => x(d.index))
+      .attr('y1', (d) => y(d.high))
+      .attr('y2', (d) => y(d.low))
+      .attr('stroke', (d) => (d.close >= d.open ? A_UP : A_DOWN))
+      .attr('stroke-width', 1.2)
+      .attr('stroke-dasharray', '2,2')
+      .attr('opacity', 0.8);
+
+    forecastCandles.append('rect')
+      .attr('x', (d) => x(d.index) - candleWidth / 2)
+      .attr('y', (d) => y(Math.max(d.open, d.close)))
+      .attr('width', candleWidth)
+      .attr('height', (d) => Math.max(1, Math.abs(y(d.open) - y(d.close))))
+      .attr('fill', (d) => (d.close >= d.open ? A_UP : A_DOWN))
+      .attr('fill-opacity', 0.28)
+      .attr('stroke', (d) => (d.close >= d.open ? A_UP : A_DOWN))
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,2');
 
     // --- Place particles overlaid on K-line ---
     // Group particles by trade_date
@@ -471,26 +567,26 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
       .attr('dy', '14px');
 
     function snapToData(px: number) {
-      const idx = Math.max(0, Math.min(data.length - 1, Math.round(x.invert(px))));
-      return data[idx];
+      const idx = Math.max(0, Math.min(maxIndex, Math.round(x.invert(px))));
+      return chartRows[idx];
     }
 
     function renderChart() {
-        const [d0, d1] = x.domain();
-        const visibleCount = Math.max(1, d1 - d0 + 1);
+      const [d0, d1] = x.domain();
+      const visibleCount = Math.max(1, d1 - d0 + 1);
       const visibleStart = Math.max(0, Math.floor(d0));
-      const visibleEnd = Math.min(data.length - 1, Math.ceil(d1));
-      const visibleRows = data.slice(visibleStart, visibleEnd + 1);
-      const visibleLow = d3.min(visibleRows, (d) => d.low) ?? d3.min(data, (d) => d.low)!;
-      const visibleHigh = d3.max(visibleRows, (d) => d.high) ?? d3.max(data, (d) => d.high)!;
+      const visibleEnd = Math.min(maxIndex, Math.ceil(d1));
+      const visibleRows = chartRows.slice(visibleStart, visibleEnd + 1);
+      const visibleLow = d3.min(visibleRows, (d) => d.low) ?? d3.min(chartRows, (d) => d.low)!;
+      const visibleHigh = d3.max(visibleRows, (d) => d.high) ?? d3.max(chartRows, (d) => d.high)!;
       const pad = Math.max((visibleHigh - visibleLow) * 0.12, visibleHigh * 0.01);
       y.domain([visibleLow - pad, visibleHigh + pad]);
 
       candleWidth = Math.max(2, Math.min(18, (width / visibleCount) * 0.65));
       const visibleTickStep = Math.max(1, Math.ceil(visibleCount / 8));
       const tickStart = Math.max(0, Math.ceil(d0));
-      const tickEnd = Math.min(data.length - 1, Math.floor(d1));
-      const visibleTicks = data
+      const tickEnd = Math.min(maxIndex, Math.floor(d1));
+      const visibleTicks = chartRows
         .slice(tickStart, tickEnd + 1)
         .filter((_, i) => i % visibleTickStep === 0)
         .map((d) => d.index);
@@ -498,7 +594,7 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
         visibleTicks.push(tickEnd);
       }
 
-      xAxisG.call(d3.axisBottom(x).tickValues(visibleTicks).tickFormat((value) => data[Math.round(Number(value))]?.dateStr.slice(5) || ''));
+      xAxisG.call(d3.axisBottom(x).tickValues(visibleTicks).tickFormat((value) => chartRows[Math.round(Number(value))]?.dateStr.slice(5) || ''));
       xAxisG.selectAll('text').style('font-size', '12px').style('fill', '#555');
       xAxisG.selectAll('.domain').style('stroke', '#1a2030');
       xAxisG.selectAll('.tick line').style('stroke', '#1a2030');
@@ -529,15 +625,33 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
         .attr('width', candleWidth)
         .attr('y', (d: any) => y(Math.max(d.open, d.close)))
         .attr('height', (d: any) => Math.max(1, Math.abs(y(d.open) - y(d.close))));
+      forecastLayer.selectAll<SVGLineElement, any>('.forecast-separator')
+        .attr('x1', x(data.length - 0.5))
+        .attr('x2', x(data.length - 0.5))
+        .attr('y2', height);
+      forecastLayer.selectAll<SVGTextElement, any>('.forecast-label')
+        .attr('x', x(data.length - 0.5) + 8);
+      forecastCandles
+        .style('display', (d) => (d.index < d0 - 1 || d.index > d1 + 1 ? 'none' : null));
+      forecastCandles.selectAll('line')
+        .attr('x1', (d: any) => x(d.index))
+        .attr('x2', (d: any) => x(d.index))
+        .attr('y1', (d: any) => y(d.high))
+        .attr('y2', (d: any) => y(d.low));
+      forecastCandles.selectAll('rect')
+        .attr('x', (d: any) => x(d.index) - candleWidth / 2)
+        .attr('width', candleWidth)
+        .attr('y', (d: any) => y(Math.max(d.open, d.close)))
+        .attr('height', (d: any) => Math.max(1, Math.abs(y(d.open) - y(d.close))));
       rebuildParticles();
       drawParticles(hoveredParticleRef.current);
     }
 
     function setVisibleDomain(nextStart: number, nextEnd: number) {
       const minSpan = 12;
-      const maxStart = Math.max(0, data.length - 1 - minSpan);
-      let start = Math.max(0, Math.min(nextStart, data.length - 1));
-      let end = Math.max(0, Math.min(nextEnd, data.length - 1));
+      const maxStart = Math.max(0, maxIndex - minSpan);
+      let start = Math.max(0, Math.min(nextStart, maxIndex));
+      let end = Math.max(0, Math.min(nextEnd, maxIndex));
       if (end - start < minSpan) {
         const center = (start + end) / 2;
         start = center - minSpan / 2;
@@ -547,9 +661,9 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
         end -= start;
         start = 0;
       }
-      if (end > data.length - 1) {
-        start -= end - (data.length - 1);
-        end = data.length - 1;
+      if (end > maxIndex) {
+        start -= end - maxIndex;
+        end = maxIndex;
       }
       start = Math.max(0, Math.min(start, maxStart));
       x.domain([start, end]);
@@ -567,7 +681,7 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
     function jumpToLatest() {
       const [d0, d1] = x.domain();
       const span = d1 - d0;
-      setVisibleDomain(data.length - 1 - span, data.length - 1);
+      setVisibleDomain(maxIndex - span, maxIndex);
     }
 
     chartActionsRef.current = {
@@ -575,7 +689,7 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
       latest: jumpToLatest,
       reset: () => {
         domainRef.current = null;
-        setVisibleDomain(0, data.length - 1);
+        setVisibleDomain(0, maxIndex);
       },
     };
 
@@ -647,6 +761,10 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
                   : undefined,
               });
             } else {
+              if (d.isForecast) {
+                onArticleSelect?.(null);
+                return;
+              }
               // Click on background: unlock any locked article, then show similar days
               onArticleSelect?.(null);
               onDayClick?.(d.dateStr, {
@@ -664,6 +782,12 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
         const [x0, x1] = event.selection as [number, number];
         const d0 = snapToData(x0);
         const d1 = snapToData(x1);
+        if (d0.isForecast || d1.isForecast) {
+          brushMoving = true;
+          d3.select(this).call(brush.move, null);
+          brushMoving = false;
+          return;
+        }
         if (d0.dateStr === d1.dateStr) {
           brushMoving = true;
           d3.select(this).call(brush.move, null);
@@ -704,7 +828,7 @@ export default function CandlestickChart({ symbol, lockedNewsId, highlightedArti
         }
         const center = x.invert(mx);
         const zoomFactor = event.deltaY > 0 ? 1.18 : 0.82;
-        const nextSpan = Math.max(12, Math.min(data.length - 1, span * zoomFactor));
+        const nextSpan = Math.max(12, Math.min(maxIndex, span * zoomFactor));
         const ratio = span > 0 ? (center - d0) / span : 0.5;
         setVisibleDomain(center - nextSpan * ratio, center + nextSpan * (1 - ratio));
       })

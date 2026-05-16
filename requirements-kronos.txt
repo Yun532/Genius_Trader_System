@@ -1,0 +1,8 @@
+# Optional dependencies for Kronos K-line prediction.
+# Keep separate from requirements.txt because torch is large and Kronos is optional.
+torch>=2.0.0
+einops==0.8.1
+huggingface_hub==0.33.1
+matplotlib==3.9.3
+tqdm==4.67.1
+safetensors==0.6.2

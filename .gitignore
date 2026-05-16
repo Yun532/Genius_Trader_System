@@ -20,6 +20,7 @@ backend/ml/models/
 data/
 .npm-cache/
 reference-original/
+third_party/Kronos/
 
 # Stock images (too large for git)
 backend/static/images/

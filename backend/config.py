@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     tushare_token: str = ""            # Tushare Pro token (optional backup)
     data_source: str = "akshare"       # "akshare" | "polygon"
     database_path: str = str(PROJECT_ROOT / "pokieticker.db")
+    kronos_enabled: bool = True
+    kronos_repo_path: str = ""          # Optional local clone path for https://github.com/shiyu-coder/Kronos
+    kronos_tokenizer_name: str = "NeoQuasar/Kronos-Tokenizer-base"
+    kronos_model_name: str = "NeoQuasar/Kronos-small"
+    kronos_device: str = "cpu"
+    kronos_max_context: int = 512
 
     model_config = {"env_file": str(PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8", "extra": "ignore"}
 

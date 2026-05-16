@@ -14,6 +14,7 @@ import SignalReferencePanel from './components/SignalReferencePanel';
 import StockReportPanel from './components/StockReportPanel';
 import MacroChainPanel from './components/MacroChainPanel';
 import MarketHeatmap from './components/MarketHeatmap';
+import KLinePredictionPanel, { type KronosReference } from './components/KLinePredictionPanel';
 import './App.css';
 
 interface RangeSelection {
@@ -193,6 +194,10 @@ function App() {
   const [similarArticle, setSimilarArticle] = useState<ArticleSelection | null>(null);
   const [showSignalReference, setShowSignalReference] = useState(false);
   const [showStockReport, setShowStockReport] = useState(false);
+  const [showKLinePrediction, setShowKLinePrediction] = useState(false);
+  const [klinePredLen, setKlinePredLen] = useState(5);
+  const [klineLookback, setKlineLookback] = useState(120);
+  const [klineForecast, setKlineForecast] = useState<KronosReference | null>(null);
   const [macroChainDate, setMacroChainDate] = useState<string | null>(null);
   const [syncingSymbol, setSyncingSymbol] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
@@ -210,7 +215,7 @@ function App() {
   const [activeCategoryIds, setActiveCategoryIds] = useState<string[]>([]);
   const [activeCategoryColor, setActiveCategoryColor] = useState<string | null>(null);
   const [rightPanelWidth, setRightPanelWidth] = useState(380);
-  const [chartRowHeight, setChartRowHeight] = useState('48vh');
+  const [chartRowHeight, setChartRowHeight] = useState('65vh');
 
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -303,6 +308,8 @@ function App() {
       setSimilarArticle(null);
       setShowSignalReference(false);
       setShowStockReport(false);
+      setShowKLinePrediction(false);
+      setKlineForecast(null);
       setMacroChainDate(null);
     }
   }, []);
@@ -333,6 +340,8 @@ function App() {
       setSelectedDayOhlc(article.ohlc || null);
       setShowSignalReference(false);
       setShowStockReport(false);
+      setShowKLinePrediction(false);
+      setKlineForecast(null);
       setMacroChainDate(null);
       setHoveredDate(article.date);
       return article;
@@ -357,6 +366,8 @@ function App() {
     setSimilarArticle(null);
     setShowSignalReference(false);
     setShowStockReport(false);
+    setShowKLinePrediction(false);
+    setKlineForecast(null);
   }, [hoveredOhlc]);
 
   const handleOpenDeep = useCallback((newsId: string, date: string) => {
@@ -375,6 +386,8 @@ function App() {
     setRangeQuestion(null);
     setShowSignalReference(false);
     setShowStockReport(false);
+    setShowKLinePrediction(false);
+    setKlineForecast(null);
     setHoveredDate(date);
   }, [hoveredOhlc]);
 
@@ -394,6 +407,8 @@ function App() {
     setRangeQuestion(null);
     setShowSignalReference(false);
     setShowStockReport(false);
+    setShowKLinePrediction(false);
+    setKlineForecast(null);
     setHoveredDate(date);
   }, [hoveredOhlc]);
 
@@ -418,6 +433,10 @@ function App() {
     setSelectedDayOhlc(ohlc);
   }, []);
 
+  const handleForecastLoaded = useCallback((forecast: KronosReference | null) => {
+    setKlineForecast(forecast);
+  }, []);
+
   function handleSelectSymbol(symbol: string) {
     setAppView('stock');
     setSelectedSymbol(symbol);
@@ -433,6 +452,8 @@ function App() {
     setSimilarArticle(null);
     setShowSignalReference(false);
     setShowStockReport(false);
+    setShowKLinePrediction(false);
+    setKlineForecast(null);
     setActiveCategory(null);
     setActiveCategoryIds([]);
     setActiveCategoryColor(null);
@@ -587,6 +608,20 @@ function App() {
         />
       );
     }
+    if (showKLinePrediction) {
+      return (
+        <KLinePredictionPanel
+          symbol={selectedSymbol}
+          displayName={selectedDisplayName}
+          predLen={klinePredLen}
+          lookback={klineLookback}
+          onPredLenChange={setKlinePredLen}
+          onLookbackChange={setKlineLookback}
+          onForecastLoaded={handleForecastLoaded}
+          onClose={() => setShowKLinePrediction(false)}
+        />
+      );
+    }
     if (similarArticle) {
       return (
         <SimilarNewsPanel
@@ -675,7 +710,19 @@ function App() {
             type="button"
             className="range-news-ai-btn research-signal-btn"
             onClick={() => {
+              setShowKLinePrediction(true);
+              setShowSignalReference(false);
+              setShowStockReport(false);
+            }}
+          >
+            日线预测参考
+          </button>
+          <button
+            type="button"
+            className="range-news-ai-btn research-signal-btn"
+            onClick={() => {
               setShowSignalReference(true);
+              setShowKLinePrediction(false);
               setShowStockReport(false);
             }}
           >
@@ -684,7 +731,10 @@ function App() {
           <button
             type="button"
             className="range-news-ai-btn research-signal-btn"
-            onClick={() => setShowStockReport(true)}
+            onClick={() => {
+              setShowStockReport(true);
+              setShowKLinePrediction(false);
+            }}
           >
             DeepSeek 股票分析
           </button>
@@ -792,6 +842,7 @@ function App() {
               onClick={() => {
                 setShowStockReport(true);
                 setShowSignalReference(false);
+                setShowKLinePrediction(false);
                 setSelectedDay(null);
                 setSelectedDayOhlc(null);
                 setSelectedRange(null);
@@ -888,6 +939,7 @@ function App() {
               <CandlestickChart
                 key={`${selectedSymbol}-${chartRefresh}`}
                 symbol={selectedSymbol}
+                forecast={showKLinePrediction ? klineForecast : null}
                 lockedNewsId={lockedArticle?.newsId ?? null}
                 highlightedArticleIds={activeCategoryIds.length > 0 ? activeCategoryIds : null}
                 highlightColor={activeCategoryColor}

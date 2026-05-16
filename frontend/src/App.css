@@ -22,6 +22,210 @@ body {
   --status-failed-border: rgba(248, 113, 113, 0.36);
 }
 
+/* ===== Kronos K-line prediction reference ===== */
+.kline-pred-panel {
+  height: 100%;
+  overflow: auto;
+}
+
+.kline-pred-header {
+  align-items: flex-start;
+}
+
+.kline-pred-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.panel-close-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #3b4054;
+  border-radius: 6px;
+  background: #171a24;
+  color: #d7dce8;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-close-btn:hover {
+  background: #202432;
+}
+
+.kline-pred-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a2d3a;
+}
+
+.kline-pred-controls label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.kline-pred-controls select {
+  height: 32px;
+  border: 1px solid #3b4054;
+  border-radius: 6px;
+  background: #11141d;
+  color: #f3f4f6;
+  padding: 0 8px;
+}
+
+.kline-pred-state,
+.kline-pred-unavailable {
+  margin: 14px;
+  padding: 14px;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  background: #11141d;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.kline-pred-unavailable-title {
+  margin-bottom: 8px;
+  color: #f3f4f6;
+  font-weight: 700;
+}
+
+.kline-pred-unavailable-text {
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.kline-pred-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px;
+  padding: 16px;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  background: #11141d;
+}
+
+.kline-pred-summary.up {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.kline-pred-summary.down {
+  border-color: rgba(34, 197, 94, 0.38);
+  background: rgba(20, 83, 45, 0.18);
+}
+
+.kline-pred-summary-label {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.kline-pred-summary-value {
+  margin-top: 4px;
+  color: #f3f4f6;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.kline-pred-return {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.kline-pred-return.up,
+.kline-pred-row .up {
+  color: #ef4444;
+}
+
+.kline-pred-return.down,
+.kline-pred-row .down {
+  color: #22c55e;
+}
+
+.kline-pred-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.kline-pred-metrics div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  background: #11141d;
+}
+
+.kline-pred-metrics span {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.kline-pred-metrics strong {
+  color: #f3f4f6;
+  font-size: 14px;
+}
+
+.kline-pred-path {
+  margin: 0 14px 14px;
+  border: 1px solid #2a2d3a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.kline-pred-section-title {
+  padding: 10px 12px;
+  background: #11141d;
+  color: #e5e7eb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kline-pred-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 70px;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-top: 1px solid #2a2d3a;
+  font-size: 13px;
+}
+
+.kline-pred-row span {
+  color: #cbd5e1;
+}
+
+.kline-pred-row strong,
+.kline-pred-row em {
+  font-style: normal;
+  text-align: right;
+}
+
+.kline-pred-warning,
+.kline-pred-note {
+  margin: 0 14px 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(146, 64, 14, 0.2);
+  color: #fdba74;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.kline-pred-note {
+  background: #11141d;
+  color: #9ca3af;
+}
+
 .app {
   height: 100vh;
   display: flex;
@@ -507,7 +711,7 @@ button.sync-badge {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(420px, 1fr) var(--right-panel-width, 380px);
-  grid-template-rows: var(--chart-row-height, 48vh) minmax(180px, 1fr);
+  grid-template-rows: var(--chart-row-height, 65vh) minmax(180px, 1fr);
   grid-template-areas:
     "chart      prediction"
     "news       prediction";
@@ -538,7 +742,7 @@ button.sync-badge {
 .layout-resize-horizontal {
   left: 0;
   right: var(--right-panel-width, 380px);
-  top: var(--chart-row-height, 48vh);
+  top: var(--chart-row-height, 65vh);
   height: 8px;
   transform: translateY(-4px);
   cursor: row-resize;

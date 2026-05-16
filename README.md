@@ -8,6 +8,17 @@
 
 > 当前演示 GIF 仍沿用早期参考素材，A 股界面已经继续演进，后续可重新录制。
 
+## Model References and Attribution
+
+The optional daily K-line forecast layer uses Kronos as a local, research-only model backend:
+
+- Kronos GitHub: https://github.com/shiyu-coder/Kronos
+- Kronos model weights on Hugging Face: https://huggingface.co/NeoQuasar
+- Kronos paper: https://arxiv.org/abs/2508.02739
+- Kronos license: MIT License, Copyright (c) 2025 ShiYu
+
+Kronos is not vendored into this repository. Clone it locally and set `KRONOS_REPO_PATH` when enabling the feature. All forecast output is displayed as research reference, not investment advice.
+
 ## 主要功能
 
 - **A 股日 K 研究**：支持输入 `000001`、`600519`、`002339` 等 A 股代码。
@@ -16,6 +27,7 @@
 - **区间归因**：拖选一段 K 线区间，询问这段上涨或下跌由什么驱动。
 - **事件深挖**：点击新闻或公告，查看摘要、情绪、影响路径和相似事件。
 - **相似历史**：根据技术特征和事件特征寻找历史相似交易日。
+- **日线预测参考**：可选接入 Kronos，在 K 线图右侧叠加未来日线参考路径。
 - **个股报告**：按交易日生成并缓存 DeepSeek/OpenAI 风格的研究报告。
 - **信号参考**：展示统计参考、相似历史和情景观察，但不输出交易指令。
 - **产业链联动**：查看政策、宏观、行业、上下游、替代/互补板块和同行表现。
@@ -90,6 +102,7 @@ GET  /api/market/sector/{board_name}/constituents
 POST /api/analysis/deep
 POST /api/analysis/similar
 GET  /api/predict/{symbol}/similar-days
+GET  /api/predict/{symbol}/kronos-reference
 ```
 
 ## 快速开始
@@ -122,6 +135,28 @@ npm run dev
 ```text
 http://localhost:7777/PokieTicker/
 ```
+
+### 3. 可选 Kronos 日线预测
+
+Kronos 是可选能力，不影响基础研究工作台启动：
+
+```bash
+git clone https://github.com/shiyu-coder/Kronos third_party/Kronos
+pip install -r requirements-kronos.txt
+```
+
+然后在 `.env` 中设置：
+
+```env
+KRONOS_ENABLED=true
+KRONOS_REPO_PATH=E:\pokeiticker\third_party\Kronos
+KRONOS_TOKENIZER_NAME=NeoQuasar/Kronos-Tokenizer-base
+KRONOS_MODEL_NAME=NeoQuasar/Kronos-small
+KRONOS_DEVICE=cpu
+KRONOS_MAX_CONTEXT=512
+```
+
+首次运行会从 Hugging Face 下载模型权重。预测结果只作为研究参考。
 
 ## 环境变量
 
