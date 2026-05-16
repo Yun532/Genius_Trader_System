@@ -321,6 +321,15 @@ CREATE TABLE IF NOT EXISTS sector_constituents_cache (
     expires_at    TEXT,
     PRIMARY KEY (board_name, date)
 );
+
+CREATE TABLE IF NOT EXISTS market_heatmap_cache (
+    period        TEXT NOT NULL,
+    date          TEXT NOT NULL,
+    payload_json  TEXT NOT NULL,
+    generated_at  TEXT NOT NULL,
+    source        TEXT,
+    PRIMARY KEY (period, date)
+);
 """
 
 
@@ -492,6 +501,16 @@ def _migrate_ashare_columns(conn: sqlite3.Connection):
             generated_at  TEXT NOT NULL,
             expires_at    TEXT,
             PRIMARY KEY (board_name, date)
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS market_heatmap_cache (
+            period        TEXT NOT NULL,
+            date          TEXT NOT NULL,
+            payload_json  TEXT NOT NULL,
+            generated_at  TEXT NOT NULL,
+            source        TEXT,
+            PRIMARY KEY (period, date)
         )"""
     )
 

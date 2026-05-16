@@ -10,10 +10,12 @@ import re
 import subprocess
 import sys
 import time
+from io import StringIO
 from datetime import date, timedelta
 from typing import Any, Optional
 
 import pandas as pd
+import requests
 
 from backend.ashare.symbol import get_limit_pct, get_market, normalize, to_akshare
 
@@ -79,6 +81,23 @@ def _float(row: Any, *names: str, default: float = 0.0) -> float:
     value = _value(row, *names, default=default)
     try:
         return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _cn_number(value: Any, default: float = 0.0) -> float:
+    text = str(value or "").strip().replace(",", "")
+    if not text or text in {"-", "--", "nan", "None"}:
+        return default
+    multiplier = 1.0
+    if text.endswith("亿"):
+        multiplier = 100000000.0
+        text = text[:-1]
+    elif text.endswith("万"):
+        multiplier = 10000.0
+        text = text[:-1]
+    try:
+        return float(text) * multiplier
     except (TypeError, ValueError):
         return default
 
@@ -471,6 +490,104 @@ def fetch_industry_board_ohlc(board_name: str, start: str, end: str) -> list[dic
     return rows
 
 
+def fetch_industry_boards() -> list[dict]:
+    """Fetch current EastMoney industry board snapshot rows."""
+    ak = _get_ak()
+    try:
+        df = ak.stock_board_industry_name_em()
+    except Exception as exc:
+        logger.warning("Failed to fetch industry board list: %s", exc)
+        df = None
+
+    rows = []
+    if df is not None and not df.empty:
+        for _, row in df.iterrows():
+            board_name = _text(row, "板块名称", "名称", "行业名称", "name")
+            if not board_name:
+                continue
+            rows.append(
+                {
+                    "board_name": industry_board_name(board_name),
+                    "board_code": _text(row, "板块代码", "代码", "code"),
+                    "latest_price": _float(row, "最新价", "价格", "price", "close", default=0.0),
+                    "change_pct": _float(row, "涨跌幅", "涨幅", "change_pct", default=0.0),
+                    "amount": _float(row, "成交额", "amount", default=0.0),
+                    "volume": _float(row, "成交量", "volume", default=0.0),
+                    "market_cap": _float(row, "总市值", "market_cap", default=0.0),
+                    "turnover_rate": _float(row, "换手率", "turnover_rate", default=0.0),
+                    "up_count": int(_float(row, "上涨家数", "up_count", default=0.0)),
+                    "down_count": int(_float(row, "下跌家数", "down_count", default=0.0)),
+                    "leader_name": _text(row, "领涨股票", "领涨股", "leader_name"),
+                    "leader_change_pct": _float(row, "领涨股票-涨跌幅", "领涨股-涨跌幅", "leader_change_pct", default=0.0),
+                    "source": "akshare.stock_board_industry_name_em",
+                }
+            )
+    if len(rows) >= 50:
+        return rows
+    if rows:
+        logger.warning("EastMoney industry board list returned only %s rows; falling back to THS summary", len(rows))
+
+    try:
+        df = ak.stock_board_industry_summary_ths()
+    except Exception as exc:
+        logger.warning("Failed to fetch THS industry board summary: %s", exc)
+        df = None
+
+    if df is not None and not df.empty:
+        for _, row in df.iterrows():
+            board_name = _text(row, "板块", "name")
+            if not board_name:
+                continue
+            rows.append(
+                {
+                    "board_name": industry_board_name(board_name),
+                    "board_code": _text(row, "代码", "code"),
+                    "latest_price": _float(row, "均价", "price", "close", default=0.0),
+                    "change_pct": _float(row, "涨跌幅", "change_pct", default=0.0),
+                    "amount": _float(row, "总成交额", "amount", default=0.0) * 100000000,
+                    "volume": _float(row, "总成交量", "volume", default=0.0) * 10000,
+                    "market_cap": 0.0,
+                    "turnover_rate": 0.0,
+                    "up_count": int(_float(row, "上涨家数", "up_count", default=0.0)),
+                    "down_count": int(_float(row, "下跌家数", "down_count", default=0.0)),
+                    "leader_name": _text(row, "领涨股", "leader_name"),
+                    "leader_change_pct": _float(row, "领涨股-涨跌幅", "leader_change_pct", default=0.0),
+                    "source": "akshare.stock_board_industry_summary_ths",
+                }
+            )
+        return rows
+
+    try:
+        df = ak.stock_board_industry_name_ths()
+    except Exception as exc:
+        logger.warning("Failed to fetch THS industry board names: %s", exc)
+        return rows
+    if df is None or df.empty:
+        return rows
+    for _, row in df.iterrows():
+        board_name = _text(row, "name", "板块", "名称")
+        if not board_name:
+            continue
+        rows.append(
+            {
+                "board_name": industry_board_name(board_name),
+                "board_code": _text(row, "code", "代码"),
+                "latest_price": 0.0,
+                "change_pct": None,
+                "amount": None,
+                "volume": None,
+                "market_cap": 0.0,
+                "turnover_rate": 0.0,
+                "up_count": 0,
+                "down_count": 0,
+                "leader_name": "",
+                "leader_change_pct": None,
+                "source": "akshare.stock_board_industry_name_ths",
+            }
+        )
+    return rows
+
+
 def fetch_industry_board_constituents(board_name: str) -> list[dict]:
     """Fetch current constituents for an EastMoney industry board."""
     ak = _get_ak()
@@ -491,7 +608,52 @@ def fetch_industry_board_constituents(board_name: str) -> list[dict]:
 
     if df is None or df.empty:
         logger.warning("Failed to fetch industry constituents for %s: %s", name, last_exc)
-        return []
+        try:
+            name_df = ak.stock_board_industry_name_ths()
+            matched = name_df[name_df["name"].astype(str) == name]
+            if matched.empty:
+                matched = name_df[name_df["name"].astype(str) == str(board_name)]
+            if matched.empty:
+                return []
+            code = str(matched.iloc[0]["code"])
+            url = f"http://q.10jqka.com.cn/thshy/detail/code/{code}/"
+            response = requests.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Referer": "http://q.10jqka.com.cn/thshy/",
+                },
+                timeout=15,
+            )
+            tables = pd.read_html(StringIO(response.text))
+            df = tables[0] if tables else pd.DataFrame()
+        except Exception as exc:
+            logger.warning("Failed to fetch THS industry constituents for %s: %s", name, exc)
+            return []
+
+        rows = []
+        for _, row in df.iterrows():
+            code = _text(row, "代码", "code").zfill(6)
+            if not code:
+                continue
+            symbol = normalize(code)
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "code": code,
+                    "name": _text(row, "名称", "name", default=symbol),
+                    "board_name": name,
+                    "latest_price": _float(row, "现价", "price", "close", default=0.0),
+                    "change_pct": _float(row, "涨跌幅(%)", "涨跌幅", "change_pct", default=0.0),
+                    "amount": _cn_number(_value(row, "成交额", "amount")),
+                    "volume": 0.0,
+                    "turnover_rate": _float(row, "换手(%)", "换手率", "turnover_rate", default=0.0),
+                    "amplitude": _float(row, "振幅(%)", "振幅", "amplitude", default=0.0),
+                    "market_cap": _cn_number(_value(row, "流通市值", "总市值", "market_cap")),
+                    "source": "akshare.ths_industry_detail_table",
+                }
+            )
+        return rows
 
     rows = []
     for _, row in df.iterrows():

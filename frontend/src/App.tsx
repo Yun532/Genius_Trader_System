@@ -13,6 +13,7 @@ import SimilarNewsPanel from './components/SimilarNewsPanel';
 import SignalReferencePanel from './components/SignalReferencePanel';
 import StockReportPanel from './components/StockReportPanel';
 import MacroChainPanel from './components/MacroChainPanel';
+import MarketHeatmap from './components/MarketHeatmap';
 import './App.css';
 
 interface RangeSelection {
@@ -97,6 +98,8 @@ interface StockInfo {
   latest_event_date?: string | null;
 }
 
+type AppView = 'stock' | 'market';
+
 const SOURCE_LABELS: Record<string, string> = {
   prices: '日 K',
   news: '新闻',
@@ -160,6 +163,7 @@ function latestPriceDateFromStock(stock: StockInfo) {
 }
 
 function App() {
+  const [appView, setAppView] = useState<AppView>('stock');
   const [activeTickers, setActiveTickers] = useState<string[]>([]);
   const [tickerNames, setTickerNames] = useState<Record<string, string>>({});
   const [tickerLastUpdates, setTickerLastUpdates] = useState<Record<string, string>>({});
@@ -415,6 +419,7 @@ function App() {
   }, []);
 
   function handleSelectSymbol(symbol: string) {
+    setAppView('stock');
     setSelectedSymbol(symbol);
     setHoveredDate(null);
     setHoveredOhlc(null);
@@ -721,6 +726,22 @@ function App() {
       <header className="app-header">
         <div className="header-left">
           <h1>天才交易员系统</h1>
+          <div className="app-view-toggle" role="tablist" aria-label="工作视图">
+            <button
+              type="button"
+              className={appView === 'stock' ? 'active' : ''}
+              onClick={() => setAppView('stock')}
+            >
+              个股研究
+            </button>
+            <button
+              type="button"
+              className={appView === 'market' ? 'active' : ''}
+              onClick={() => setAppView('market')}
+            >
+              大盘云图
+            </button>
+          </div>
         </div>
         <StockSelector
           activeTickers={activeTickers}
@@ -729,12 +750,12 @@ function App() {
           onSelect={handleSelectSymbol}
           onAdd={handleAddTicker}
         />
-        {selectedRange ? (
+        {appView === 'stock' && selectedRange ? (
           <div className="header-ohlc">
             <span className="ohlc-date">{selectedRange.startDate} ~ {selectedRange.endDate}</span>
             <span className="range-badge">已选择区间</span>
           </div>
-        ) : headerOhlc ? (
+        ) : appView === 'stock' && headerOhlc ? (
           <div className="header-ohlc">
             <span className="ohlc-date">{headerOhlc.date}</span>
             <span className="ohlc-label">O</span>
@@ -845,6 +866,14 @@ function App() {
         </div>
       </header>
 
+      {appView === 'market' ? (
+        <MarketHeatmap
+          onSelectStock={(symbol) => {
+            setAppView('stock');
+            handleSelectSymbol(symbol);
+          }}
+        />
+      ) : (
       <main
         className="app-main"
         ref={mainRef}
@@ -913,6 +942,7 @@ function App() {
           onPointerDown={(event) => handleLayoutResize('horizontal', event)}
         />
       </main>
+      )}
       {showStockReport && selectedSymbol && (
         <div className="stock-report-modal-backdrop" role="dialog" aria-modal="true" aria-label="股票分析报告">
           <div className="stock-report-modal">

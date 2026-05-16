@@ -1,91 +1,69 @@
-# Genius Trader System
+# 天才交易员系统
 
-**Genius Trader System** is an A-share research workstation adapted from PokieTicker. It keeps the original event-driven chart idea, then rebuilds the data and analysis layer for Chinese equities: daily K lines, news, announcements, financial reports, capital-flow style information, daily explanations, similar days, stock reports, and macro/industry-chain linkage research.
+天才交易员系统是一个面向 A 股研究的本地工作台，基于 PokieTicker 的事件驱动 K 线研究思路改造而来。它把日 K、新闻、公告、财报、资金信息、每日涨跌原因、相似历史、个股报告、产业链联动和大盘云图放在同一个界面里，方便做复盘和研究。
 
-> This is a research and learning tool, not financial advice. It does not generate deterministic buy/sell signals.
+> 本项目只用于研究、学习和复盘，不构成投资建议，也不会生成确定性的买卖信号。
 
-[![Demo](docs/demo.gif)](docs/demo.gif)
+[![演示](docs/demo.gif)](docs/demo.gif)
 
-> The demo GIF is kept from the original PokieTicker reference material for now. The current A-share interface has evolved; a fresh demo GIF should be recorded later.
+> 当前演示 GIF 仍沿用早期参考素材，A 股界面已经继续演进，后续可重新录制。
 
-## Credits and References
+## 主要功能
 
-This project is built on and inspired by:
+- **A 股日 K 研究**：支持输入 `000001`、`600519`、`002339` 等 A 股代码。
+- **事件点对齐 K 线**：将新闻、公告、财报、资金类信息按交易日挂到 K 线上。
+- **每日涨跌原因**：点击某一天，查看 OHLC、市场背景、行业表现、事件影响和可能驱动因素。
+- **区间归因**：拖选一段 K 线区间，询问这段上涨或下跌由什么驱动。
+- **事件深挖**：点击新闻或公告，查看摘要、情绪、影响路径和相似事件。
+- **相似历史**：根据技术特征和事件特征寻找历史相似交易日。
+- **个股报告**：按交易日生成并缓存 DeepSeek/OpenAI 风格的研究报告。
+- **信号参考**：展示统计参考、相似历史和情景观察，但不输出交易指令。
+- **产业链联动**：查看政策、宏观、行业、上下游、替代/互补板块和同行表现。
+- **大盘云图**：按行业聚类展示全行业热力图，红涨绿跌，点击板块查看成分股、涨停股、强势股、领涨/领跌样本。
 
-- [owengetinfo-design/PokieTicker](https://github.com/owengetinfo-design/PokieTicker) — the original event-driven candlestick research app.
-- [Stanleyzrice/PokieTicker-sookice](https://github.com/Stanleyzrice/PokieTicker-sookice) — the A-share-oriented fork used as the first working base.
+## 大盘云图
 
-`reference-original/` is kept locally as a read-only comparison copy during development, but is not committed to this repository.
+大盘云图是当前版本新增的市场视图：
 
-## What It Does
+- 顶部可在 **个股研究 / 大盘云图** 间切换。
+- 面积优先表示行业板块成交额或可用权重。
+- 颜色采用 A 股习惯：红色上涨，绿色下跌，灰色表示本地暂无可靠涨跌快照。
+- 默认读取本地 SQLite 快照，打开页面不依赖实时联网。
+- 交易日 15:20 后后台尝试刷新行业快照，并异步暖成分股缓存。
+- 右侧详情面板展示涨停成分股、强势成分股、成交额靠前、领涨和领跌样本。
+- 对单个板块可手动点击“联网补齐成分股”，用于在公开行情接口可用时补全样本。
 
-- **A-share daily K chart** — Search or add Chinese stocks such as `000001`, `600519`, `002339`.
-- **Event dots on K lines** — News, announcements, financial reports, and capital-flow style information are aligned to trading dates.
-- **Daily reason panel** — Click one trading day to view OHLC, market background, events, and possible drivers.
-- **Range analysis** — Select a date range and ask why the stock moved during that period.
-- **Event deep dive** — Click an event to inspect summary, sentiment, possible impact path, and similar events.
-- **Similar days** — Compare a selected date with historical days using technical and event features.
-- **Stock report** — Generate a cached DeepSeek/OpenAI stock research report for the selected trading day.
-- **Signal reference** — Show statistical reference, similar-history context, and LLM scenario observations without turning them into trading advice.
-- **Macro and industry-chain research** — Explore policy, global macro, sector moves, supply chain, complementary/substitute sectors, and peer-company performance.
+当前云图仍是“行业 + 成分股详情”版本，不是全 A 股个股铺满版本。后续如果需要对齐全市场个股云图，可以升级为“行业分组 -> 行业内全部个股矩形”的结构。
 
-## A-share Research Workflow
-
-1. Search or enter an A-share code.
-2. The backend syncs daily K data and available events on demand.
-3. The chart shows price action and event dots.
-4. Click a date to see daily reason analysis.
-5. Open stock report or signal reference for broader context.
-6. Open macro-chain research for industry, policy, and peer-company linkage.
-7. Use "补全同行行情" in the macro-chain panel to explicitly fill peer-company daily K performance.
-
-## Macro and Industry-Chain Panel
-
-The macro-chain view is organized into four tabs:
-
-- **总览** — Core summary, policy, global macro, transmission paths, risks.
-- **产业链公司** — Same-sector and related-company table with daily, 5-day, and 20-day returns.
-- **板块对比** — Sector and related-sector performance.
-- **证据来源** — Collapsed source list; only the first few items are shown by default.
-
-Peer-company data follows this order:
-
-1. Use cached local daily K if available.
-2. Use AKShare/EastMoney industry constituents when the upstream endpoint works.
-3. Fall back to companies explicitly mentioned in cached source articles.
-4. Leave missing returns as `--`; the system does not invent price moves.
-5. The "补全同行行情" button hydrates peer-company K data on demand and refreshes the table.
-
-## Architecture
+## 技术架构
 
 ```text
-Frontend (React + Vite + D3)
+Frontend: React + Vite + D3
+  App
   CandlestickChart
+  MarketHeatmap
   DailyReasonPanel
   StockReportPanel
   SignalReferencePanel
   MacroChainPanel
         |
         v
-Backend (FastAPI + SQLite)
-  /api/stocks/{symbol}/sync
-  /api/stocks/{symbol}/prices
-  /api/stocks/{symbol}/events
-  /api/stocks/{symbol}/daily-reason
-  /api/stocks/{symbol}/stock-report
-  /api/stocks/{symbol}/signal-reference
-  /api/stocks/{symbol}/macro-chain
-  /api/stocks/{symbol}/sector-relations
+Backend: FastAPI + SQLite
+  /api/stocks/*
+  /api/market/*
+  /api/news/*
+  /api/analysis/*
+  /api/predict/*
         |
         v
 Data and Analysis
-  AKShare daily K / announcements / reports / boards
-  External info search: OpenAI web search or Tavily
-  LLM analysis: DeepSeek first, OpenAI optional fallback
-  SQLite caches for reports, daily reasons, events, sector relations
+  AKShare / 东方财富 / 同花顺公开数据
+  SQLite 本地缓存
+  DeepSeek 优先，OpenAI 可选回退
+  OpenAI Web Search 或 Tavily 可选外部搜索
 ```
 
-## Key Backend Interfaces
+## 常用接口
 
 ```text
 POST /api/stocks/{symbol}/sync
@@ -106,29 +84,32 @@ POST /api/stocks/{symbol}/macro-chain/refresh?date=YYYY-MM-DD
 GET  /api/stocks/{symbol}/sector-relations?date=YYYY-MM-DD
 POST /api/stocks/{symbol}/sector-relations/hydrate?date=YYYY-MM-DD
 
+GET  /api/market/heatmap?period=1d|5d|20d
+GET  /api/market/sector/{board_name}/constituents
+
 POST /api/analysis/deep
 POST /api/analysis/similar
 GET  /api/predict/{symbol}/similar-days
 ```
 
-See [docs/ASHARE_RESEARCH_SYSTEM_SUMMARY.md](docs/ASHARE_RESEARCH_SYSTEM_SUMMARY.md) for a fuller handoff document.
+## 快速开始
 
-## Quick Start
-
-### 1. Backend
+### 1. 后端
 
 ```bash
 python -m venv .venv
+```
 
-# Windows PowerShell
+Windows PowerShell:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
-
 pip install -r requirements.txt
 python -m backend.database
 python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 2. Frontend
+### 2. 前端
 
 ```bash
 cd frontend
@@ -136,21 +117,21 @@ npm install
 npm run dev
 ```
 
-Open:
+打开：
 
 ```text
 http://localhost:7777/PokieTicker/
 ```
 
-## Environment Variables
+## 环境变量
 
-Copy the example file and fill in only the providers you want to use:
+复制示例文件：
 
 ```bash
 cp .env.example .env
 ```
 
-Important variables:
+按需填写：
 
 ```env
 LLM_PROVIDER=deepseek
@@ -170,42 +151,43 @@ NEWS_WEB_SEARCH_CACHE_TTL_HOURS=24
 TAVILY_API_KEY=
 ```
 
-Notes:
+说明：
 
-- If you use OpenAI web search, `OPENAI_BASE_URL` should point to an endpoint that supports `/responses` and `web_search`.
-- A local OpenAI-compatible proxy may work for chat completions but fail for web search.
-- DeepSeek is used for analysis, not for finding news facts by itself.
-- Tavily can be used as a search provider; its results are then analyzed by the LLM layer.
+- 日 K、行业快照和本地缓存不需要 LLM key。
+- DeepSeek/OpenAI 只用于报告、解释、宏观链路等分析类功能。
+- OpenAI Web Search 需要支持 `/responses` 和 `web_search` 的 OpenAI 兼容端点。
+- Tavily 可作为外部搜索来源，搜索结果再交给 LLM 做分析。
+- `.env` 不应提交到仓库。
 
-## Cache and Cost Control
+## 缓存与成本控制
 
-The system is intentionally conservative with LLM/search usage:
+系统默认尽量少调用外部服务：
 
-- Syncing K lines and local events does not require an LLM key.
-- Daily reason has local-rule fallback.
-- Stock reports are cached by stock/date/context/model.
-- Range analysis and signal reference use TTL caches.
-- Macro-chain research reads cache by default.
-- External search and LLM macro-chain refresh should be user-triggered.
-- The peer-company hydration button fetches price data only; it does not call LLM or web search.
+- K 线同步和本地事件整理不需要 LLM。
+- 每日涨跌原因有本地规则兜底。
+- 个股报告、区间分析、信号参考、产业链研究都有缓存。
+- 大盘云图默认读 SQLite 快照，页面打开不触发实时联网。
+- 盘后后台任务负责尝试刷新行业快照和成分股缓存。
+- 成分股“联网补齐”是用户主动触发，不会自动阻塞界面。
 
-## Project Structure
+## 项目结构
 
 ```text
 backend/
   api/
     main.py
     routers/
-      stocks.py        # A-share sync, reports, macro-chain, daily reason
-      news.py          # Original-compatible news endpoints
-      analysis.py      # Deep dive and similar events
-      predict.py       # Similar days / compatibility forecast
+      stocks.py        # A 股同步、报告、产业链、每日原因
+      market.py        # 大盘云图和行业成分股
+      news.py          # 新闻兼容接口
+      analysis.py      # 深度分析和相似事件
+      predict.py       # 相似历史 / 预测参考
   ashare/
-    client.py          # AKShare data access
-    symbol.py          # A-share symbol normalization
-  database.py          # SQLite schema and migrations
-  llm.py               # DeepSeek/OpenAI provider layer
-  web_search.py        # OpenAI/Tavily external information search
+    client.py          # AKShare 数据访问
+    symbol.py          # A 股代码标准化
+  database.py          # SQLite schema 和迁移
+  llm.py               # DeepSeek/OpenAI provider
+  web_search.py        # OpenAI/Tavily 外部搜索
 
 frontend/
   src/
@@ -213,6 +195,7 @@ frontend/
     App.css
     components/
       CandlestickChart.tsx
+      MarketHeatmap.tsx
       DailyReasonPanel.tsx
       StockReportPanel.tsx
       SignalReferencePanel.tsx
@@ -226,16 +209,30 @@ docs/
   screenshot.png
 ```
 
-## Current Limitations
+## 数据源说明
 
-- Single-stock, on-demand research only.
-- Daily-level analysis only; no intraday minute-level reasoning yet.
-- No automatic trading or deterministic buy/sell recommendation.
-- External search depends on OpenAI web search or Tavily availability.
-- AKShare/EastMoney endpoints may fail depending on network conditions.
-- Industry-chain relations are still early-stage and should be treated as research references.
-- Qlib/FinRL are not integrated yet; prediction remains statistical/reference-oriented.
+本项目主要通过 AKShare 调用东方财富、同花顺等公开数据源。公开行情接口可能受网络、限频、反爬或节假日状态影响而失败。系统设计上会优先使用本地缓存，并在接口失败时保留已有快照，避免页面空白或被慢请求阻塞。
 
-## License
+## 当前限制
 
-MIT. See [LICENSE](LICENSE).
+- 当前是本地研究工具，不是多人在线系统。
+- 大盘云图 v1 是行业云图，不是全市场个股矩形云图。
+- 成分股覆盖率取决于公开数据接口和本地缓存。
+- 分钟级实时行情和盘中 8 秒刷新尚未实现。
+- 外部搜索依赖 OpenAI Web Search 或 Tavily 可用性。
+- AKShare/东方财富/同花顺接口可能因网络环境失败。
+- 预测和信号功能只做研究参考，不构成交易建议。
+
+## 致谢
+
+本项目基于并参考：
+
+- [owengetinfo-design/PokieTicker](https://github.com/owengetinfo-design/PokieTicker)
+- [Stanleyzrice/PokieTicker-sookice](https://github.com/Stanleyzrice/PokieTicker-sookice)
+- [dapanyuntu/yuntu](https://github.com/dapanyuntu/yuntu) 的大盘云图产品形态启发
+
+`reference-original/` 仅作为本地开发对照目录，不提交到仓库。
+
+## 许可证
+
+MIT。详见 [LICENSE](LICENSE)。

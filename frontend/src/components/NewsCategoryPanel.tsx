@@ -25,9 +25,9 @@ interface Props {
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
   news: { label: '新闻', color: '#38bdf8' },
   announcement: { label: '公告', color: '#f59e0b' },
-  financial_report: { label: '财报', color: '#22c55e' },
+  financial_report: { label: '财报', color: '#00e5a8' },
   policy: { label: '政策', color: '#a78bfa' },
-  capital: { label: '资金', color: '#ef4444' },
+  capital: { label: '资金', color: '#ff3d8b' },
 };
 
 const PRIMARY_CATEGORY_KEYS = ['news', 'announcement', 'financial_report', 'capital'];
@@ -90,8 +90,8 @@ export default function NewsCategoryPanel({ symbol, date, activeCategory, onCate
   }
 
   function colorForFilter(filter: SentimentFilter, fallback: string) {
-    if (filter === 'positive') return '#ef4444';
-    if (filter === 'negative') return '#22c55e';
+    if (filter === 'positive') return '#ff3d8b';
+    if (filter === 'negative') return '#00e5a8';
     return fallback;
   }
 

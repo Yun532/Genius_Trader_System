@@ -1611,6 +1611,15 @@ def _cached_sector_constituents(board_name: str, date_text: str) -> Optional[lis
            LIMIT 1""",
         (board_name, date_text),
     ).fetchone()
+    if not row:
+        row = conn.execute(
+            """SELECT payload_json, expires_at
+               FROM sector_constituents_cache
+               WHERE board_name = ?
+               ORDER BY date DESC, generated_at DESC
+               LIMIT 1""",
+            (board_name,),
+        ).fetchone()
     conn.close()
     if not row:
         return None
@@ -1643,6 +1652,18 @@ def _store_sector_constituents(board_name: str, date_text: str, items: list[dict
             conn.execute(
                 "INSERT OR IGNORE INTO tickers (symbol, name, market) VALUES (?, ?, ?)",
                 (item["symbol"], item.get("name"), get_market(item["symbol"])),
+            )
+            conn.execute(
+                """INSERT OR REPLACE INTO stock_industry_map
+                   (symbol, industry_name, board_name, source, updated_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    item["symbol"],
+                    board_name,
+                    board_name,
+                    item.get("source") or "sector_constituents_cache",
+                    datetime.now().isoformat(),
+                ),
             )
     conn.commit()
     conn.close()

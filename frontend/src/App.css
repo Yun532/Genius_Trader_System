@@ -8,12 +8,12 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #0f1117;
   color: #e0e0e0;
-  --a-up: #ef4444;
-  --a-up-bg: rgba(239, 68, 68, 0.14);
-  --a-up-border: rgba(239, 68, 68, 0.36);
-  --a-down: #22c55e;
-  --a-down-bg: rgba(34, 197, 94, 0.14);
-  --a-down-border: rgba(34, 197, 94, 0.34);
+  --a-up: #ff3d8b;
+  --a-up-bg: rgba(255, 61, 139, 0.14);
+  --a-up-border: rgba(255, 61, 139, 0.36);
+  --a-down: #00e5a8;
+  --a-down-bg: rgba(0, 229, 168, 0.14);
+  --a-down-border: rgba(0, 229, 168, 0.34);
   --status-success: #38bdf8;
   --status-success-bg: rgba(56, 189, 248, 0.12);
   --status-success-border: rgba(56, 189, 248, 0.36);
@@ -53,6 +53,37 @@ body {
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.5px;
+}
+
+.app-view-toggle {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid #2e3144;
+  border-radius: 6px;
+  background: rgba(15, 17, 23, 0.72);
+}
+
+.app-view-toggle button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #8f9bb3;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-view-toggle button:hover {
+  color: #e6ebff;
+  background: rgba(102, 126, 234, 0.14);
+}
+
+.app-view-toggle button.active {
+  color: #ffffff;
+  background: #667eea;
 }
 
 .header-ohlc {
@@ -722,6 +753,438 @@ button.sync-badge {
   font-size: 17px;
 }
 
+/* ===== Market Heatmap ===== */
+.market-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(13, 18, 36, 0.98), rgba(18, 22, 43, 0.98) 46%, rgba(12, 29, 35, 0.98));
+}
+
+.market-toolbar {
+  min-height: 54px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(110, 231, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(17, 22, 42, 0.92);
+}
+
+.market-toolbar-left {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.market-toolbar h2 {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.market-summary-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #b8c3dd;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.market-summary-line .up,
+.market-detail-change.up,
+.market-stock-change.up,
+.market-tile-change.up {
+  color: #ff5f9e;
+  text-shadow: 0 0 14px rgba(255, 61, 139, 0.38);
+}
+
+.market-summary-line .down,
+.market-detail-change.down,
+.market-stock-change.down,
+.market-tile-change.down {
+  color: #25f0ba;
+  text-shadow: 0 0 14px rgba(0, 229, 168, 0.34);
+}
+
+.market-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.market-period-tabs {
+  display: flex;
+  padding: 2px;
+  border: 1px solid rgba(123, 140, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(9, 13, 28, 0.72);
+}
+
+.market-period-tabs button,
+.market-refresh-btn {
+  min-height: 30px;
+  border: 0;
+  border-radius: 4px;
+  color: #b7c1da;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.market-period-tabs button {
+  padding: 0 12px;
+}
+
+.market-period-tabs button:hover,
+.market-refresh-btn:hover {
+  color: #ffffff;
+  background: rgba(79, 209, 197, 0.14);
+}
+
+.market-period-tabs button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #695cff, #00d4ff);
+  box-shadow: 0 0 18px rgba(0, 212, 255, 0.22);
+}
+
+.market-refresh-btn {
+  padding: 0 12px;
+  border: 1px solid rgba(0, 229, 168, 0.38);
+  color: #dffcff;
+  background: rgba(0, 229, 168, 0.11);
+}
+
+.market-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) 360px;
+  overflow: hidden;
+}
+
+.market-heatmap-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(110, 231, 255, 0.14);
+}
+
+.market-heatmap-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(11, 15, 31, 0.56), rgba(8, 11, 24, 0.9));
+}
+
+.market-heatmap-svg {
+  display: block;
+}
+
+.market-group rect {
+  fill: rgba(116, 130, 255, 0.045);
+  stroke: rgba(130, 224, 255, 0.18);
+  stroke-width: 1;
+}
+
+.market-group text {
+  fill: #9feaff;
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 0 10px rgba(57, 213, 255, 0.4);
+}
+
+.market-tile {
+  cursor: pointer;
+}
+
+.market-tile rect {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+  transition: stroke 0.15s, filter 0.15s;
+}
+
+.market-tile:hover rect,
+.market-tile.selected rect {
+  stroke: rgba(255, 255, 255, 0.92);
+  filter: brightness(1.22) saturate(1.12) drop-shadow(0 0 10px rgba(96, 239, 255, 0.28));
+}
+
+.market-tile text {
+  pointer-events: none;
+  user-select: none;
+}
+
+.market-tile-name {
+  fill: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.market-tile-change {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.market-tile-meta {
+  fill: rgba(242, 249, 255, 0.82);
+  font-size: 11px;
+}
+
+.market-tooltip {
+  position: absolute;
+  z-index: 60;
+  width: 232px;
+  padding: 10px;
+  border: 1px solid rgba(125, 230, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(13, 17, 34, 0.97);
+  color: #d9e6f2;
+  font-size: 12px;
+  line-height: 1.55;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45), 0 0 22px rgba(0, 212, 255, 0.12);
+  pointer-events: none;
+}
+
+.market-tooltip-title {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.market-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8f9bb3;
+  background: rgba(15, 17, 23, 0.78);
+  font-size: 14px;
+}
+
+.market-loading.error {
+  color: var(--status-failed);
+}
+
+.market-detail-panel .market-loading {
+  position: static;
+  min-height: 220px;
+  background: transparent;
+}
+
+.market-notes {
+  padding: 7px 12px;
+  border-top: 1px solid rgba(110, 231, 255, 0.14);
+  color: #9feaff;
+  background: rgba(0, 212, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.market-detail-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  background: rgba(17, 22, 42, 0.94);
+}
+
+.market-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(110, 231, 255, 0.14);
+}
+
+.market-detail-header h3 {
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.market-detail-meta {
+  margin-top: 5px;
+  color: #aab8d5;
+  font-size: 12px;
+}
+
+.market-detail-change {
+  font-size: 22px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.market-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.market-detail-stats div {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(123, 140, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(28, 35, 64, 0.68);
+}
+
+.market-detail-stats span {
+  display: block;
+  color: #aab8d5;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.market-detail-stats strong {
+  display: block;
+  color: #f4f8ff;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-sector-note {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  border-radius: 6px;
+  color: #9feaff;
+  background: rgba(0, 212, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.market-detail-loading {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 229, 168, 0.28);
+  border-radius: 6px;
+  color: #dffcff;
+  background: rgba(0, 229, 168, 0.08);
+  font-size: 12px;
+}
+
+.market-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 12px;
+}
+
+.market-detail-refresh {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 229, 168, 0.34);
+  border-radius: 5px;
+  background: rgba(0, 229, 168, 0.1);
+  color: #dffcff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.market-detail-refresh:hover:not(:disabled) {
+  border-color: rgba(0, 212, 255, 0.62);
+  background: rgba(0, 212, 255, 0.14);
+}
+
+.market-detail-refresh:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+
+.market-detail-block {
+  margin-top: 14px;
+}
+
+.market-detail-subtitle {
+  margin-bottom: 7px;
+  color: #9feaff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.market-stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.market-stock-row {
+  width: 100%;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px 62px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid rgba(123, 140, 255, 0.2);
+  border-radius: 5px;
+  background: rgba(13, 18, 36, 0.72);
+  color: #d9e6f2;
+  cursor: pointer;
+  text-align: left;
+}
+
+.market-stock-row:hover {
+  border-color: rgba(0, 212, 255, 0.58);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.market-stock-name,
+.market-stock-symbol {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-stock-name {
+  color: #f4f8ff;
+  font-weight: 700;
+}
+
+.market-stock-symbol {
+  color: #9fb0d0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+.market-stock-change {
+  text-align: right;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+.market-empty-small {
+  padding: 12px;
+  border: 1px dashed #303442;
+  border-radius: 6px;
+  color: #8f9bb3;
+  font-size: 12px;
+}
+
 /* ===== News Panel ===== */
 .news-area {
   grid-area: news;
@@ -828,11 +1291,11 @@ button.sync-badge {
 }
 
 .news-card.card-positive {
-  border-left-color: #ef4444;
+  border-left-color: #ff3d8b;
 }
 
 .news-card.card-negative {
-  border-left-color: #22c55e;
+  border-left-color: #00e5a8;
 }
 
 .news-card.card-neutral {
@@ -854,11 +1317,11 @@ button.sync-badge {
 }
 
 .sentiment-dot.positive {
-  background: #ef4444;
+  background: #ff3d8b;
 }
 
 .sentiment-dot.negative {
-  background: #22c55e;
+  background: #00e5a8;
 }
 
 .sentiment-dot.neutral {
@@ -1005,8 +1468,8 @@ button.sync-badge {
 }
 
 .range-clear-btn:hover {
-  border-color: #22c55e;
-  color: #22c55e;
+  border-color: #00e5a8;
+  color: #00e5a8;
 }
 
 .range-loading {
@@ -1225,7 +1688,7 @@ button.sync-badge {
 }
 
 .daily-quality.high {
-  color: #ef4444;
+  color: #ff3d8b;
 }
 
 .daily-quality.medium {
@@ -1233,7 +1696,7 @@ button.sync-badge {
 }
 
 .daily-quality.low {
-  color: #22c55e;
+  color: #00e5a8;
 }
 
 .daily-meta {
@@ -1315,7 +1778,7 @@ button.sync-badge {
 }
 
 .daily-model-card.failed {
-  border-color: rgba(34, 197, 94, 0.42);
+  border-color: rgba(0, 229, 168, 0.42);
 }
 
 .daily-model-main {
@@ -1482,11 +1945,11 @@ button.sync-badge {
 }
 
 .daily-event-card.positive {
-  border-left-color: #ef4444;
+  border-left-color: #ff3d8b;
 }
 
 .daily-event-card.negative {
-  border-left-color: #22c55e;
+  border-left-color: #00e5a8;
 }
 
 .daily-event-card:hover {
@@ -1609,9 +2072,9 @@ button.sync-badge {
 
 .macro-success-banner {
   padding: 8px 10px;
-  border: 1px solid rgba(34, 197, 94, 0.28);
+  border: 1px solid rgba(0, 229, 168, 0.28);
   border-radius: 6px;
-  background: rgba(34, 197, 94, 0.08);
+  background: rgba(0, 229, 168, 0.08);
   color: #86efac;
   font-size: 12px;
   line-height: 1.45;
@@ -1921,11 +2384,11 @@ button.sync-badge {
 }
 
 .similar-stat-val.up {
-  color: #ef4444;
+  color: #ff3d8b;
 }
 
 .similar-stat-val.down {
-  color: #22c55e;
+  color: #00e5a8;
 }
 
 .similar-card-top {
@@ -1995,8 +2458,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.range-popup-change.up { color: #ef4444; }
-.range-popup-change.down { color: #22c55e; }
+.range-popup-change.up { color: #ff3d8b; }
+.range-popup-change.down { color: #00e5a8; }
 
 .range-popup-label {
   font-size: 14px;
@@ -2204,8 +2667,8 @@ button.sync-badge {
   line-height: 1;
 }
 
-.pred-arrow.up { color: #ef4444; }
-.pred-arrow.down { color: #22c55e; }
+.pred-arrow.up { color: #ff3d8b; }
+.pred-arrow.down { color: #00e5a8; }
 
 .pred-dir {
   font-size: 15px;
@@ -2213,8 +2676,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.pred-dir.up { color: #ef4444; }
-.pred-dir.down { color: #22c55e; }
+.pred-dir.up { color: #ff3d8b; }
+.pred-dir.down { color: #00e5a8; }
 
 .pred-conf-bar {
   position: relative;
@@ -2231,8 +2694,8 @@ button.sync-badge {
   transition: width 0.3s;
 }
 
-.pred-conf-fill.up { background: #ef4444; }
-.pred-conf-fill.down { background: #22c55e; }
+.pred-conf-fill.up { background: #ff3d8b; }
+.pred-conf-fill.down { background: #00e5a8; }
 
 .pred-conf-label {
   position: absolute;
@@ -2297,8 +2760,8 @@ button.sync-badge {
   overflow: hidden;
 }
 
-.fc-pred-card.up { border-left-color: #ef4444; }
-.fc-pred-card.down { border-left-color: #22c55e; }
+.fc-pred-card.up { border-left-color: #ff3d8b; }
+.fc-pred-card.down { border-left-color: #00e5a8; }
 
 .fc-pred-header {
   display: flex;
@@ -2328,8 +2791,8 @@ button.sync-badge {
   font-weight: 700;
 }
 
-.fc-pred-dir.up { color: #ef4444; }
-.fc-pred-dir.down { color: #22c55e; }
+.fc-pred-dir.up { color: #ff3d8b; }
+.fc-pred-dir.down { color: #00e5a8; }
 
 .fc-pred-conf {
   margin-left: auto;
@@ -2384,8 +2847,8 @@ button.sync-badge {
   transition: width 0.3s;
 }
 
-.fc-driver-bar-fill.up { background: #ef4444; }
-.fc-driver-bar-fill.down { background: #22c55e; }
+.fc-driver-bar-fill.up { background: #ff3d8b; }
+.fc-driver-bar-fill.down { background: #00e5a8; }
 
 .fc-driver-val {
   flex-shrink: 0;
@@ -2463,8 +2926,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.fc-stat-value.up { color: #ef4444; }
-.fc-stat-value.down { color: #22c55e; }
+.fc-stat-value.up { color: #ff3d8b; }
+.fc-stat-value.down { color: #00e5a8; }
 
 /* Similar period cards */
 .fc-periods-list {
@@ -2505,8 +2968,8 @@ button.sync-badge {
   color: #888;
 }
 
-.fc-period-detail .up { color: #ef4444; font-weight: 600; }
-.fc-period-detail .down { color: #22c55e; font-weight: 600; }
+.fc-period-detail .up { color: #ff3d8b; font-weight: 600; }
+.fc-period-detail .down { color: #00e5a8; font-weight: 600; }
 
 /* Recent news section */
 .fc-news-section {
@@ -2530,8 +2993,8 @@ button.sync-badge {
   flex-shrink: 0;
 }
 
-.fc-news-dot.up { background: #ef4444; }
-.fc-news-dot.down { background: #22c55e; }
+.fc-news-dot.up { background: #ff3d8b; }
+.fc-news-dot.down { background: #00e5a8; }
 
 .fc-news-content {
   flex: 1;
@@ -2604,8 +3067,8 @@ button.sync-badge {
   color: #ccc;
 }
 
-.sim-feat-val.up { color: #ef4444; }
-.sim-feat-val.down { color: #22c55e; }
+.sim-feat-val.up { color: #ff3d8b; }
+.sim-feat-val.down { color: #00e5a8; }
 
 .sim-stats-grid {
   display: grid;
@@ -2632,8 +3095,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.sim-stat-big.up { color: #ef4444; }
-.sim-stat-big.down { color: #22c55e; }
+.sim-stat-big.up { color: #ff3d8b; }
+.sim-stat-big.down { color: #00e5a8; }
 
 .sim-day-card {
   background: #252836;
@@ -2711,8 +3174,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.sim-day-ret.up { color: #ef4444; }
-.sim-day-ret.down { color: #22c55e; }
+.sim-day-ret.up { color: #ff3d8b; }
+.sim-day-ret.down { color: #00e5a8; }
 
 .sim-day-news {
   margin-top: 6px;
@@ -2947,16 +3410,16 @@ button.sync-badge {
 
 .sentiment-sub-up:hover,
 .sentiment-sub-up.sentiment-sub-active {
-  border-color: #ef4444;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.12);
+  border-color: #ff3d8b;
+  color: #ff3d8b;
+  background: rgba(255, 61, 139, 0.12);
 }
 
 .sentiment-sub-down:hover,
 .sentiment-sub-down.sentiment-sub-active {
-  border-color: #22c55e;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.12);
+  border-color: #00e5a8;
+  color: #00e5a8;
+  background: rgba(0, 229, 168, 0.12);
 }
 
 .sentiment-sub-count {
@@ -2978,23 +3441,23 @@ button.sync-badge {
 
 .fc-text-bull {
   font-weight: 700;
-  color: #ef4444;
+  color: #ff3d8b;
 }
 
 .fc-text-bear {
   font-weight: 700;
-  color: #22c55e;
+  color: #00e5a8;
 }
 
 .fc-text-pct-up {
   font-weight: 600;
-  color: #ef4444;
+  color: #ff3d8b;
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 .fc-text-pct-down {
   font-weight: 600;
-  color: #22c55e;
+  color: #00e5a8;
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
@@ -3009,12 +3472,12 @@ button.sync-badge {
 }
 
 .fc-hero-up {
-  background: linear-gradient(135deg, var(--a-up-bg), rgba(239, 68, 68, 0.04));
+  background: linear-gradient(135deg, var(--a-up-bg), rgba(255, 61, 139, 0.04));
   border: 1px solid var(--a-up-border);
 }
 
 .fc-hero-down {
-  background: linear-gradient(135deg, var(--a-down-bg), rgba(34, 197, 94, 0.04));
+  background: linear-gradient(135deg, var(--a-down-bg), rgba(0, 229, 168, 0.04));
   border: 1px solid var(--a-down-border);
 }
 
@@ -3024,8 +3487,8 @@ button.sync-badge {
   line-height: 1;
 }
 
-.fc-hero-up .fc-hero-arrow { color: #ef4444; }
-.fc-hero-down .fc-hero-arrow { color: #22c55e; }
+.fc-hero-up .fc-hero-arrow { color: #ff3d8b; }
+.fc-hero-down .fc-hero-arrow { color: #00e5a8; }
 
 .fc-hero-text {
   display: flex;
@@ -3046,8 +3509,8 @@ button.sync-badge {
   font-weight: 700;
 }
 
-.fc-hero-up .fc-hero-dir { color: #ef4444; }
-.fc-hero-down .fc-hero-dir { color: #22c55e; }
+.fc-hero-up .fc-hero-dir { color: #ff3d8b; }
+.fc-hero-down .fc-hero-dir { color: #00e5a8; }
 
 .fc-hero-conf {
   margin-left: auto;
@@ -3105,11 +3568,11 @@ button.sync-badge {
 }
 
 .fc-impact-card.fc-impact-up {
-  border-left-color: #ef4444;
+  border-left-color: #ff3d8b;
 }
 
 .fc-impact-card.fc-impact-down {
-  border-left-color: #22c55e;
+  border-left-color: #00e5a8;
 }
 
 .fc-impact-header {
@@ -3125,8 +3588,8 @@ button.sync-badge {
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
-.fc-impact-ret.up { color: #ef4444; }
-.fc-impact-ret.down { color: #22c55e; }
+.fc-impact-ret.up { color: #ff3d8b; }
+.fc-impact-ret.down { color: #00e5a8; }
 
 .fc-impact-sentiment {
   font-size: 12px;
@@ -3238,8 +3701,8 @@ button.sync-badge {
   letter-spacing: 0.5px;
 }
 
-.fc-deep-bull .fc-deep-reasons-label { color: #ef4444; }
-.fc-deep-bear .fc-deep-reasons-label { color: #22c55e; }
+.fc-deep-bull .fc-deep-reasons-label { color: #ff3d8b; }
+.fc-deep-bear .fc-deep-reasons-label { color: #00e5a8; }
 
 .fc-deep-reasons-text {
   font-size: 13px;
@@ -3324,11 +3787,11 @@ button.sync-badge {
 }
 
 .range-news-section-title.bullish {
-  color: #ef4444;
+  color: #ff3d8b;
 }
 
 .range-news-section-title.bearish {
-  color: #22c55e;
+  color: #00e5a8;
 }
 
 .range-news-all {
@@ -3421,6 +3884,38 @@ button.sync-badge {
   }
   .app-header h1 {
     font-size: 18px;
+  }
+  .app-view-toggle button {
+    padding: 0 9px;
+  }
+  .market-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .market-toolbar-left {
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .market-summary-line {
+    width: 100%;
+    overflow-x: auto;
+  }
+  .market-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(360px, 1fr) 42vh;
+  }
+  .market-heatmap-panel {
+    border-right: 0;
+    border-bottom: 1px solid #2a2d3a;
+  }
+  .market-detail-panel {
+    padding: 12px;
+  }
+  .market-tile-name {
+    font-size: 12px;
   }
   .ticker-tabs {
     max-width: 300px;
@@ -3553,6 +4048,33 @@ button.sync-badge {
   .app-header h1 {
     font-size: 16px;
   }
+  .header-left {
+    gap: 8px;
+  }
+  .app-view-toggle button {
+    min-height: 26px;
+    padding: 0 7px;
+    font-size: 12px;
+  }
+  .market-toolbar {
+    padding: 8px;
+  }
+  .market-toolbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .market-content {
+    grid-template-rows: minmax(300px, 52vh) minmax(260px, 1fr);
+  }
+  .market-detail-stats {
+    grid-template-columns: 1fr;
+  }
+  .market-stock-row {
+    grid-template-columns: minmax(0, 1fr) 56px;
+  }
+  .market-stock-symbol {
+    display: none;
+  }
   .header-right {
     gap: 6px;
   }
@@ -3667,7 +4189,7 @@ button.sync-badge {
   .news-summary {
     font-size: 12px;
   }
-  .reason {
+.reason {
     font-size: 12px;
   }
 }

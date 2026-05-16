@@ -55,8 +55,8 @@ interface Props {
   onDayClick?: (date: string, ohlc?: HoverData) => void;
 }
 
-const A_UP = '#ef4444';
-const A_DOWN = '#22c55e';
+const A_UP = '#ff3d8b';
+const A_DOWN = '#00e5a8';
 
 // Type-first event colors. A-share price colors are red-up/green-down.
 const SENTIMENT_COLOR: Record<string, string> = {
