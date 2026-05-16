@@ -12,7 +12,7 @@ MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "ml" / "models"
 
 
 @router.get("/{symbol}")
-def get_prediction(symbol: str, horizon: str = Query("t1", regex="^t[15]$")):
+def get_prediction(symbol: str, horizon: str = Query("t1", pattern="^t[15]$")):
     """Get direction prediction for a symbol."""
     from backend.ml.model import predict
 
@@ -24,7 +24,7 @@ def get_prediction(symbol: str, horizon: str = Query("t1", regex="^t[15]$")):
 
 
 @router.get("/{symbol}/backtest")
-def get_backtest(symbol: str, horizon: str = Query("t1", regex="^t[15]$")):
+def get_backtest(symbol: str, horizon: str = Query("t1", pattern="^t[15]$")):
     """Get backtest results for a symbol."""
     sym = _norm(symbol)
     path = MODELS_DIR / f"{sym}_{horizon}_backtest.json"

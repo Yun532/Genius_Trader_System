@@ -16,7 +16,12 @@ def configured() -> bool:
     return _api_key(settings.llm_provider) is not None or _api_key(settings.llm_fallback_provider) is not None
 
 
+def has_api_key(provider: str) -> bool:
+    return _api_key(provider) is not None
+
+
 def _api_key(provider: str) -> Optional[str]:
+    provider = (provider or "").lower()
     if provider == "deepseek":
         return settings.deepseek_api_key or None
     if provider == "openai":
@@ -25,6 +30,7 @@ def _api_key(provider: str) -> Optional[str]:
 
 
 def _base_url(provider: str) -> str:
+    provider = (provider or "").lower()
     if provider == "deepseek":
         return settings.deepseek_base_url or "https://api.deepseek.com"
     if provider == "openai":
@@ -42,15 +48,30 @@ def _model_for(provider: str) -> str:
     return settings.llm_model
 
 
-def _chat(provider: str, model: str, messages: list[dict], *, max_tokens: int = 1200) -> str:
+def _chat(
+    provider: str,
+    model: str,
+    messages: list[dict],
+    *,
+    max_tokens: int = 1200,
+    json_mode: bool = False,
+) -> str:
+    provider = (provider or "").lower()
     api_key = _api_key(provider)
     if not api_key:
         raise RuntimeError(f"Missing API key for {provider}")
     base_url = _base_url(provider)
     url = f"{base_url.rstrip('/')}/chat/completions"
-    payload = {"model": model, "messages": messages, "temperature": 0.2}
-    if provider != "deepseek":
-        payload["max_tokens"] = max_tokens
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": max_tokens,
+    }
+    if provider == "deepseek" and model.startswith("deepseek-v4"):
+        payload["thinking"] = {"type": "disabled"}
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
     response = requests.post(
         url,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -66,9 +87,10 @@ def chat(messages: list[dict], *, max_tokens: int = 1200) -> str:
     try:
         return _chat(settings.llm_provider, settings.llm_model, messages, max_tokens=max_tokens)
     except Exception as primary_error:
-        fallback_provider = settings.llm_fallback_provider
+        fallback_provider = (settings.llm_fallback_provider or "").lower()
+        primary_provider = (settings.llm_provider or "").lower()
         fallback_model = settings.llm_fallback_model
-        if fallback_provider and fallback_provider != settings.llm_provider and _api_key(fallback_provider):
+        if fallback_provider and fallback_provider != primary_provider and _api_key(fallback_provider):
             try:
                 return _chat(fallback_provider, fallback_model, messages, max_tokens=max_tokens)
             except Exception as fallback_error:
@@ -77,7 +99,20 @@ def chat(messages: list[dict], *, max_tokens: int = 1200) -> str:
 
 
 def chat_json(messages: list[dict], *, max_tokens: int = 1200) -> dict[str, Any]:
-    text = chat(messages, max_tokens=max_tokens)
+    try:
+        text = _chat(settings.llm_provider, settings.llm_model, messages, max_tokens=max_tokens, json_mode=True)
+    except Exception as primary_error:
+        fallback_provider = (settings.llm_fallback_provider or "").lower()
+        primary_provider = (settings.llm_provider or "").lower()
+        fallback_model = settings.llm_fallback_model
+        if fallback_provider and fallback_provider != primary_provider and _api_key(fallback_provider):
+            try:
+                text = _chat(fallback_provider, fallback_model, messages, max_tokens=max_tokens, json_mode=True)
+            except Exception as fallback_error:
+                logger.warning("LLM JSON fallback failed: %s", fallback_error)
+                raise primary_error
+        else:
+            raise primary_error
     return _json_from_text(text)
 
 
@@ -91,12 +126,12 @@ def _json_from_text(text: str) -> dict[str, Any]:
 
 
 def _chat_json_provider(provider: str, messages: list[dict], *, max_tokens: int = 1200) -> dict[str, Any]:
-    return _json_from_text(_chat(provider, _model_for(provider), messages, max_tokens=max_tokens))
+    return _json_from_text(_chat(provider, _model_for(provider), messages, max_tokens=max_tokens, json_mode=True))
 
 
 def _analysis_providers() -> list[str]:
-    providers = [settings.llm_provider]
-    fallback = settings.llm_fallback_provider
+    providers = [(settings.llm_provider or "").lower()]
+    fallback = (settings.llm_fallback_provider or "").lower()
     if fallback and fallback not in providers:
         providers.append(fallback)
     return [provider for provider in providers if provider and _api_key(provider)]

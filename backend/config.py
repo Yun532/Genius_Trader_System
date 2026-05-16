@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     llm_provider: str = "deepseek"
     llm_model: str = "deepseek-v4-flash"
     llm_fallback_provider: str = "openai"
-    llm_fallback_model: str = "gpt-5.4-mini"
+    llm_fallback_model: str = "gpt-4.1-mini"
     llm_analysis_mode: str = "primary_with_fallback"  # "primary_with_fallback" | "parallel_review"
     llm_cache_enabled: bool = True
     llm_recent_auto_days: int = 14
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     news_web_search_max_results: int = 8
     news_web_search_lookback_days: int = 14
     news_web_search_cache_ttl_hours: int = 24
-    openai_web_search_model: str = "gpt-5.4-mini"
+    openai_web_search_model: str = "gpt-4.1-mini"
     tavily_api_key: str = ""
     auto_sync_watchlist: bool = False
     auto_sync_hour: int = 16

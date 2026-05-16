@@ -107,7 +107,7 @@ GET  /api/predict/{symbol}/kronos-reference
 
 ## 快速开始
 
-### 1. 后端
+### 1. 后端依赖
 
 ```bash
 python -m venv .venv
@@ -119,10 +119,21 @@ Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python -m backend.database
+python scripts/smoke_check.py
 python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-### 2. 前端
+macOS / Linux:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m backend.database
+python scripts/smoke_check.py
+python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 2. 前端依赖
 
 ```bash
 cd frontend
@@ -136,7 +147,48 @@ npm run dev
 http://localhost:7777/PokieTicker/
 ```
 
-### 3. 可选 Kronos 日线预测
+如果 PowerShell 因执行策略拦截 `npm.ps1`，可在 Windows 上使用：
+
+```powershell
+cmd /c npm install
+cmd /c npm run dev
+```
+
+### 3. 可选 LLM 配置
+
+基础行情、事件缓存和界面启动不需要 LLM key。需要报告、区间归因、产业链总结等 AI 分析时，DeepSeek 或 OpenAI 至少配置一个即可：
+
+```bash
+cp .env.example .env
+```
+
+只用 DeepSeek：
+
+```env
+LLM_PROVIDER=deepseek
+LLM_MODEL=deepseek-v4-flash
+DEEPSEEK_API_KEY=你的 DeepSeek key
+LLM_FALLBACK_PROVIDER=
+OPENAI_API_KEY=
+```
+
+只用 OpenAI：
+
+```env
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4.1-mini
+OPENAI_API_KEY=你的 OpenAI key
+LLM_FALLBACK_PROVIDER=
+DEEPSEEK_API_KEY=
+```
+
+两个都配置时，系统默认先用 DeepSeek，失败后自动回退到 OpenAI。填好 key 后可运行一次真实 LLM 检查：
+
+```bash
+python scripts/smoke_check.py --llm
+```
+
+### 4. 可选 Kronos 日线预测
 
 Kronos 是可选能力，不影响基础研究工作台启动：
 
@@ -172,9 +224,10 @@ cp .env.example .env
 LLM_PROVIDER=deepseek
 LLM_MODEL=deepseek-v4-flash
 DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 LLM_FALLBACK_PROVIDER=openai
-LLM_FALLBACK_MODEL=gpt-5.4-mini
+LLM_FALLBACK_MODEL=gpt-4.1-mini
 OPENAI_API_KEY=
 OPENAI_BASE_URL=https://api.openai.com/v1
 
