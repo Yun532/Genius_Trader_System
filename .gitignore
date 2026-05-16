@@ -1,0 +1,58 @@
+# Environment variables (contains API keys)
+.env
+
+# Database (pokieticker.db.gz included in repo for quick start)
+*.db
+*.db.gz
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.backup
+
+# ML models (models.tar.gz included in repo for quick start)
+models.tar.gz
+*.joblib
+*.pkl
+*.pickle
+backend/ml/models/
+
+# Raw data
+data/
+.npm-cache/
+reference-original/
+
+# Stock images (too large for git)
+backend/static/images/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
