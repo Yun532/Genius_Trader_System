@@ -618,8 +618,8 @@ def warm_market_constituents_cache(
     }
 
 
-def _sector_detail_payload(board_name: str, date_text: str, limit: int) -> dict:
-    candidates = _sector_company_candidates(board_name, date_text, limit=limit)
+def _sector_detail_payload(board_name: str, date_text: str, limit: int, force_refresh: bool = False) -> dict:
+    candidates = _sector_company_candidates(board_name, date_text, limit=limit, force_refresh=force_refresh)
     items = candidates.get("items") or []
     groups = _sort_constituents(items)
     return {
@@ -717,6 +717,6 @@ def market_sector_constituents(
     try:
         if not refresh:
             return _sector_detail_cached_payload(board_name, date or _latest_market_date(), limit)
-        return _sector_detail_payload(board_name, date or _latest_market_date(), limit)
+        return _sector_detail_payload(board_name, date or _latest_market_date(), limit, force_refresh=True)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

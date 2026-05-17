@@ -283,6 +283,8 @@ export default function MarketHeatmap({ onSelectStock }: Props) {
       })
       .catch((err) => {
         console.error(err);
+        const message = err.response?.data?.detail || '联网补齐失败，已保留本地缓存';
+        setSelected((current) => current ? { ...current, note: message } : current);
       })
       .finally(() => setDetailRefreshing(false));
   }

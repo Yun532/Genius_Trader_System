@@ -1832,7 +1832,13 @@ def _event_mentioned_companies(symbol: str, board_name: str, date_text: str, lim
     return ranked[:limit]
 
 
-def _sector_company_candidates(board_name: str, date_text: str, limit: int = 12, context_symbol: Optional[str] = None) -> dict:
+def _sector_company_candidates(
+    board_name: str,
+    date_text: str,
+    limit: int = 12,
+    context_symbol: Optional[str] = None,
+    force_refresh: bool = False,
+) -> dict:
     if not board_name:
         return {
             "board_name": board_name,
@@ -1844,17 +1850,30 @@ def _sector_company_candidates(board_name: str, date_text: str, limit: int = 12,
     board = industry_board_name(board_name)
     cached = _cached_sector_constituents(board, date_text)
     fetched = False
+    used_cached = False
     error = None
-    items = cached
-    if items is None:
+    items = None if force_refresh else cached
+    if items is cached and cached is not None:
+        used_cached = True
+    if force_refresh or items is None:
         try:
-            items = fetch_industry_board_constituents(board)
-            fetched = bool(items)
-            if items:
+            fetched_items = fetch_industry_board_constituents(board)
+            fetched = bool(fetched_items)
+            if fetched_items:
+                items = fetched_items
+                used_cached = False
                 _store_sector_constituents(board, date_text, items)
+            elif force_refresh and cached:
+                error = "联网接口未返回新的成分股"
+                items = cached
+                used_cached = True
         except Exception as exc:
             error = str(exc)
-            items = []
+            if force_refresh and cached:
+                items = cached
+                used_cached = True
+            else:
+                items = []
     if not items:
         items = _fallback_local_sector_companies(board, date_text, limit)
     if context_symbol and len(items) < limit:
@@ -1910,9 +1929,13 @@ def _sector_company_candidates(board_name: str, date_text: str, limit: int = 12,
     enriched.sort(key=lambda item: (item.get("amount") or 0), reverse=True)
     quality = "high" if len(enriched) >= 8 else "medium" if len(enriched) >= 3 else "low"
     note = "板块成分股来自 AKShare 东方财富行业成分，近 5/20 日涨幅优先使用本地已缓存日 K；缺失时显示为空。"
-    if error and not enriched:
+    if force_refresh and error and used_cached:
+        note = f"联网补齐失败，已保留本地缓存：{error}"
+    elif force_refresh and fetched:
+        note = "已联网补齐板块成分股；近 5/20 日涨幅优先使用本地已缓存日 K。"
+    elif error and not enriched:
         note = f"暂无可靠成分股数据：{error}"
-    elif not fetched and cached is not None:
+    elif not fetched and used_cached:
         note = "板块成分股来自本地缓存，近 5/20 日涨幅优先使用本地已缓存日 K。"
     elif any((item.get("source") == "event_mentions") for item in enriched):
         note = "板块成分股接口不可用时，使用资讯中明确提到的公司作为同链候选；当日涨跌优先取日 K，缺失时用资讯表格中的当日涨跌线索，近 5/20 日缺失则留空。"
@@ -1925,7 +1948,7 @@ def _sector_company_candidates(board_name: str, date_text: str, limit: int = 12,
         "count": len(enriched),
         "quality": quality,
         "note": note,
-        "cached": cached is not None,
+        "cached": used_cached,
         "error": error,
     }
 
