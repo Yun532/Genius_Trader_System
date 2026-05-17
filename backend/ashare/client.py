@@ -588,6 +588,56 @@ def fetch_industry_boards() -> list[dict]:
     return rows
 
 
+def _ths_constituent_row(row: Any, board_name: str) -> Optional[dict]:
+    code = _text(row, "\u4ee3\u7801", "code").zfill(6)
+    if not code:
+        return None
+    symbol = normalize(code)
+    return {
+        "symbol": symbol,
+        "code": code,
+        "name": _text(row, "\u540d\u79f0", "name", default=symbol),
+        "board_name": board_name,
+        "latest_price": _float(row, "\u73b0\u4ef7", "price", "close", default=0.0),
+        "change_pct": _float(row, "\u6da8\u8dcc\u5e45(%)", "\u6da8\u8dcc\u5e45", "change_pct", default=0.0),
+        "amount": _cn_number(_value(row, "\u6210\u4ea4\u989d", "amount")),
+        "volume": 0.0,
+        "turnover_rate": _float(row, "\u6362\u624b(%)", "\u6362\u624b\u7387", "turnover_rate", default=0.0),
+        "amplitude": _float(row, "\u632f\u5e45(%)", "\u632f\u5e45", "amplitude", default=0.0),
+        "market_cap": _cn_number(_value(row, "\u6d41\u901a\u5e02\u503c", "\u603b\u5e02\u503c", "market_cap")),
+        "source": "akshare.ths_industry_detail_table",
+    }
+
+
+def _fetch_ths_industry_constituents(ak: Any, board_name: str, original_name: str) -> list[dict]:
+    name_df = ak.stock_board_industry_name_ths()
+    matched = name_df[name_df["name"].astype(str) == board_name]
+    if matched.empty:
+        matched = name_df[name_df["name"].astype(str) == str(original_name)]
+    if matched.empty:
+        return []
+    code = str(matched.iloc[0]["code"])
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": f"http://q.10jqka.com.cn/thshy/detail/code/{code}/",
+    }
+    urls = [
+        f"http://q.10jqka.com.cn/thshy/detail/code/{code}/field/199112/order/desc/page/1/",
+        f"http://q.10jqka.com.cn/thshy/detail/code/{code}/field/199112/order/asc/page/1/",
+    ]
+    rows_by_symbol: dict[str, dict] = {}
+    for url in urls:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        tables = pd.read_html(StringIO(response.text))
+        df = tables[0] if tables else pd.DataFrame()
+        for _, row in df.iterrows():
+            item = _ths_constituent_row(row, board_name)
+            if item:
+                rows_by_symbol[item["symbol"]] = item
+    return sorted(rows_by_symbol.values(), key=lambda item: _float(item, "change_pct"), reverse=True)
+
+
 def fetch_industry_board_constituents(board_name: str) -> list[dict]:
     """Fetch current constituents for an EastMoney industry board."""
     ak = _get_ak()
@@ -608,6 +658,12 @@ def fetch_industry_board_constituents(board_name: str) -> list[dict]:
 
     if df is None or df.empty:
         logger.warning("Failed to fetch industry constituents for %s: %s", name, last_exc)
+        try:
+            rows = _fetch_ths_industry_constituents(ak, name, board_name)
+            if rows:
+                return rows
+        except Exception as exc:
+            logger.warning("Failed to fetch paired THS industry constituents for %s: %s", name, exc)
         try:
             name_df = ak.stock_board_industry_name_ths()
             matched = name_df[name_df["name"].astype(str) == name]

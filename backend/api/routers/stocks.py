@@ -1945,6 +1945,7 @@ def _sector_company_candidates(
         "board_name": board,
         "date": date_text,
         "items": enriched[:limit],
+        "all_items": enriched,
         "count": len(enriched),
         "quality": quality,
         "note": note,

@@ -491,7 +491,8 @@ def build_market_heatmap_payload(
                 }
 
         constituents = constituents_payload.get("items") or []
-        top_groups = _sort_constituents(constituents)
+        group_items = constituents_payload.get("all_items") or constituents
+        top_groups = _sort_constituents(group_items)
         weight = amount or _float_or_none(snapshot.get("market_cap")) or max(1, len(constituents))
         note_parts = [part for part in [change_note, constituents_payload.get("note"), history_error] if part]
         quality = constituents_payload.get("quality") or ("medium" if rows else "low")
@@ -621,7 +622,8 @@ def warm_market_constituents_cache(
 def _sector_detail_payload(board_name: str, date_text: str, limit: int, force_refresh: bool = False) -> dict:
     candidates = _sector_company_candidates(board_name, date_text, limit=limit, force_refresh=force_refresh)
     items = candidates.get("items") or []
-    groups = _sort_constituents(items)
+    group_items = candidates.get("all_items") or items
+    groups = _sort_constituents(group_items)
     return {
         "board_name": candidates.get("board_name") or industry_board_name(board_name),
         "date": date_text,
